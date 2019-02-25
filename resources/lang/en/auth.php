@@ -15,5 +15,5 @@ return [
 
     'failed' => 'These credentials do not match our records.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
-
+    'confirm_email' => 'Almost done! We\'ll send an email to your in 5 minutes. Open it up to activate your account.'
 ];

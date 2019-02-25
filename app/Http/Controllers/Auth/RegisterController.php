@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\User;
+use App\Http\Requests\UserRegistrationRequest;
+use App\Services\ActivationService;
+use App\Services\UserRegistrationService;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
 
 class RegisterController extends Controller
@@ -31,42 +31,57 @@ class RegisterController extends Controller
     protected $redirectTo = '/home';
 
     /**
+     * @var UserRegistrationService
+     */
+    private $registrationService;
+    /**
+     * @var ActivationService
+     */
+    private $activationService;
+
+    /**
      * Create a new controller instance.
      *
-     * @return void
+     * @param UserRegistrationService $registrationService
      */
-    public function __construct()
+    public function __construct(UserRegistrationService $registrationService, ActivationService $activationService)
     {
         $this->middleware('guest');
+        $this->registrationService = $registrationService;
+        $this->activationService = $activationService;
     }
 
     /**
-     * Get a validator for an incoming registration request.
+     * Handle a registration request for the application.
      *
-     * @param  array  $data
-     * @return \Illuminate\Contracts\Validation\Validator
+     * @param  UserRegistrationRequest $request
+     * @return \Illuminate\Http\Response
      */
-    protected function validator(array $data)
+    public function register(UserRegistrationRequest $request)
     {
-        return Validator::make($data, [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
-        ]);
+        $user = $this->registrationService->createUser($request->validated());
+
+        return redirect()->to('login')->with('status', trans('auth.confirm_email'));
     }
 
     /**
-     * Create a new user instance after a valid registration.
-     *
-     * @param  array  $data
-     * @return \App\User
+     * @param $token
+     * @return mixed
      */
-    protected function create(array $data)
+    public function activateUser($token)
     {
-        return User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-        ]);
+        if ($user = $this->activationService->activateUser($token)) {
+            auth()->login($user);
+            return $this->authenticated();
+        }
+        abort(404);
+    }
+
+    /**
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     */
+    protected function authenticated()
+    {
+        return redirect()->to('home')->with('status', __('auth.activation_confirm'));
     }
 }
